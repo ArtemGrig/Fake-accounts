@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+{% block content %}
+<div style="min-height:calc(100vh - 60px);display:flex;align-items:center;justify-content:center;
+            background:var(--beige);padding:20px;">
+  <div style="width:100%;max-width:460px;">
+
+    <div style="text-align:center;margin-bottom:28px;">
+      <h1 style="font-family:'Playfair Display',serif;font-size:26px;color:var(--pine);font-weight:700;">
+        Создать аккаунт
+      </h1>
+      <p style="color:var(--text-muted);font-size:14px;margin-top:6px;">
+        Выбери имя и привяжи ботов для демонстрации
+      </p>
+    </div>
+
+    <div style="background:white;border:1px solid var(--beige-mid);border-radius:16px;padding:32px;
+                box-shadow:0 8px 32px rgba(0,49,31,0.08);">
+
+      {% if error %}
+      <div style="background:rgba(139,32,32,0.08);border:1px solid rgba(139,32,32,0.2);
+                  border-radius:10px;padding:12px 16px;margin-bottom:20px;
+                  color:var(--danger);font-size:14px;">
+        ⚠️ {{ error }}
+      </div>
+      {% endif %}
+
+      <form method="POST" style="display:flex;flex-direction:column;gap:18px;">
+
+        <div>
+          <label style="font-size:12px;color:var(--text-muted);font-weight:600;
+                        display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">
+            Имя пользователя
+          </label>
+          <input name="username" placeholder="Придумай имя..." required>
+        </div>
+
+        <div>
+          <label style="font-size:12px;color:var(--text-muted);font-weight:600;
+                        display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">
+            Пароль
+          </label>
+          <input name="password" type="password" placeholder="Придумай пароль..." required>
+        </div>
+
+        <div>
+          <label style="font-size:12px;color:var(--text-muted);font-weight:600;
+                        display:block;margin-bottom:10px;text-transform:uppercase;letter-spacing:0.5px;">
+            🤖 Привязать ботов
+          </label>
+
+          <div style="display:flex;gap:8px;justify-content:space-between;">
+            {% for n in [0, 1, 2, 3, 4, 5] %}
+            <label style="flex:1;cursor:pointer;">
+              <input type="radio" name="bot_count" value="{{ n }}"
+                {{ 'checked' if n == 3 else '' }}
+                style="display:none;" onchange="selectBotCount({{ n }})">
+              <div id="opt-{{ n }}"
+                style="text-align:center;padding:10px 4px;border-radius:10px;
+                       border:{{ '2px solid var(--pine)' if n == 3 else '1.5px solid var(--beige-mid)' }};
+                       background:{{ 'rgba(0,49,31,0.05)' if n == 3 else 'white' }};
+                       font-size:18px;font-weight:700;color:var(--pine);
+                       transition:all .2s;">
+                {{ n }}
+                <div style="font-size:10px;color:var(--text-muted);margin-top:2px;font-weight:400;">
+                  {{ 'ботов' if n != 1 else 'бот' }}
+                </div>
+              </div>
+            </label>
+            {% endfor %}
+          </div>
+
+          <!-- Превью -->
+          <div id="bot-preview" style="margin-top:14px;min-height:40px;">
+            <div style="display:flex;gap:6px;flex-wrap:wrap;" id="bot-icons"></div>
+            <div id="bot-desc" style="font-size:12px;color:var(--text-muted);margin-top:8px;"></div>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary"
+          style="width:100%;padding:13px;font-size:15px;border-radius:10px;">
+          Создать аккаунт →
+        </button>
+      </form>
+
+      <div style="text-align:center;margin-top:20px;padding-top:20px;
+                  border-top:1px solid var(--beige-mid);">
+        <span style="color:var(--text-muted);font-size:14px;">Уже есть аккаунт? </span>
+        <a href="/login" style="color:var(--pine);font-weight:600;text-decoration:none;">Войти</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const botDescs = [
+  'Боты не будут созданы',
+  'Создастся 1 бот — привязан только к тебе',
+  'Создадутся 2 бота — можно заходить и управлять',
+  'Создадутся 3 бота — рекомендуется для демо',
+  'Создадутся 4 бота — активная ботовая сеть',
+  'Создадутся 5 ботов — максимум',
+];
+
+function selectBotCount(n) {
+  for (let i = 0; i <= 5; i++) {
+    const el = document.getElementById('opt-' + i);
+    el.style.border     = '1.5px solid var(--beige-mid)';
+    el.style.background = 'white';
+  }
+  const sel = document.getElementById('opt-' + n);
+  sel.style.border     = '2px solid var(--pine)';
+  sel.style.background = 'rgba(0,49,31,0.05)';
+
+  const icons = document.getElementById('bot-icons');
+  icons.innerHTML = '';
+  for (let i = 0; i < n; i++) {
+    const div = document.createElement('div');
+    div.style.cssText = `
+      width:36px;height:36px;border-radius:50%;
+      background:rgba(139,32,32,0.1);
+      border:1.5px solid rgba(139,32,32,0.3);
+      display:flex;align-items:center;justify-content:center;
+      font-size:16px;
+    `;
+    div.textContent = '🤖';
+    icons.appendChild(div);
+  }
+  document.getElementById('bot-desc').textContent = botDescs[n];
+}
+
+selectBotCount(3);
+</script>
+{% endblock %}

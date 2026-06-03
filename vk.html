@@ -1,0 +1,384 @@
+{% extends 'base.html' %}
+{% block content %}
+<div style="max-width:860px;margin:32px auto;padding:0 16px;">
+
+  <div style="margin-bottom:28px;">
+    <h1 style="color:#7eb8f7;font-size:24px;">🔎 Анализ профиля ВКонтакте</h1>
+    <p style="color:#666;font-size:13px;margin-top:6px;">
+      Вставь ссылку на профиль VK — алгоритм проверит признаки фейкового аккаунта
+    </p>
+  </div>
+
+  <div style="background:#1a1a2e;border:1px solid #2a2a4a;border-radius:16px;padding:24px;margin-bottom:24px;">
+    <div style="margin-bottom:16px;">
+      <label style="font-size:12px;color:#888;display:block;margin-bottom:8px;">
+        🔗 Ссылка на профиль VK
+      </label>
+      <input id="vk-url" type="text"
+        placeholder="https://vk.com/username  или  vk.com/id123456"
+        style="width:100%;">
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <label style="font-size:12px;color:#888;display:block;margin-bottom:8px;">
+        🔑 VK Token
+        <a href="https://vk.com/dev" target="_blank"
+          style="color:#7eb8f7;margin-left:6px;text-decoration:none;">
+          Где получить? →
+        </a>
+      </label>
+      <div style="position:relative;">
+        <input id="vk-token" type="password"
+          placeholder="Вставь Service Token или User Token..."
+          style="width:100%;padding-right:48px;">
+        <button onclick="toggleToken()"
+          style="position:absolute;right:12px;top:50%;transform:translateY(-50%);
+                 background:none;border:none;color:#666;cursor:pointer;font-size:16px;"
+          title="Показать/скрыть">👁</button>
+      </div>
+      <div style="font-size:11px;color:#555;margin-top:6px;">
+        Токен хранится только в браузере и никуда не отправляется кроме VK API
+      </div>
+    </div>
+
+    <button onclick="analyzeVK()" id="analyze-btn" class="btn btn-primary"
+      style="width:100%;padding:14px;font-size:15px;font-weight:bold;">
+      🔍 Проанализировать профиль
+    </button>
+  </div>
+
+  <div id="error-block" style="display:none;background:#2a1a1a;border:1px solid #c0392b;
+       border-radius:12px;padding:16px;color:#ff6666;font-size:14px;
+       text-align:center;margin-bottom:20px;">
+  </div>
+
+  <div id="result-block" style="display:none;">
+
+    <div id="profile-card"
+      style="background:#1a1a2e;border-radius:16px;padding:24px;margin-bottom:20px;">
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+      <div style="background:#1a1a2e;border:1px solid #2a2a4a;border-radius:14px;padding:20px;">
+        <h3 style="color:#7eb8f7;font-size:14px;margin-bottom:14px;">📊 Статистика профиля</h3>
+        <div id="stats-grid"></div>
+      </div>
+      <div style="background:#1a1a2e;border:1px solid #2a2a4a;border-radius:14px;padding:20px;">
+        <h3 style="color:#ff6666;font-size:14px;margin-bottom:14px;">⚠️ Подозрительные признаки</h3>
+        <div id="reasons-list"></div>
+        <h3 style="color:#44bb44;font-size:14px;margin:14px 0;">✅ Признаки легитимности</h3>
+        <div id="goods-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="background:#1a1a2e;border:1px solid #2a2a4a;border-radius:16px;padding:20px;margin-top:8px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <h3 style="color:#7eb8f7;font-size:16px;">📋 История проверок</h3>
+      <button onclick="loadHistory()"
+        style="background:#1a2a4a;border:1px solid #3a6fd8;color:#7eb8f7;
+               padding:6px 14px;border-radius:10px;cursor:pointer;font-size:13px;">
+        🔄 Обновить
+      </button>
+    </div>
+    <div id="history-cards"
+      style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;">
+      <div style="color:#555;font-size:13px;text-align:center;padding:20px;grid-column:1/-1;">
+        Загрузка...
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const historyCache = {};
+
+function toggleToken() {
+  const inp = document.getElementById('vk-token');
+  inp.type  = inp.type === 'password' ? 'text' : 'password';
+}
+
+async function analyzeVK() {
+  const url   = document.getElementById('vk-url').value.trim();
+  const token = document.getElementById('vk-token').value.trim();
+  const btn   = document.getElementById('analyze-btn');
+
+  if (!url)   { showError('Введи ссылку на профиль VK'); return; }
+  if (!token) { showError('Введи VK Token'); return; }
+
+  btn.disabled    = true;
+  btn.textContent = '⏳ Анализирую...';
+  document.getElementById('error-block').style.display  = 'none';
+  document.getElementById('result-block').style.display = 'none';
+
+  try {
+    const res  = await fetch('/api/vk/analyze', {
+      method:  'POST',
+      headers: {'Content-Type': 'application/json'},
+      body:    JSON.stringify({url, token}),
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      showError(data.error);
+    } else {
+      showResult(data.result);
+      loadHistory();
+    }
+  } catch(e) {
+    showError('Ошибка соединения: ' + e.message);
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = '🔍 Проанализировать профиль';
+  }
+}
+
+function showError(msg) {
+  const el         = document.getElementById('error-block');
+  el.textContent   = '⚠️ ' + msg;
+  el.style.display = 'block';
+}
+
+function showResult(r) {
+  document.getElementById('result-block').style.display = 'block';
+
+  const scoreColor = r.color;
+  const scoreBg    = r.status === 'fake'
+    ? '#2a1010' : r.status === 'suspicious'
+    ? '#2a1a00' : '#0f2a0f';
+
+  document.getElementById('profile-card').style.border = `1px solid ${scoreColor}`;
+  document.getElementById('profile-card').innerHTML = `
+    <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;">
+      <div style="flex-shrink:0;">
+        ${r.photo && r.photo.includes('userapi.com')
+          ? `<img src="${r.photo}" style="width:80px;height:80px;border-radius:50%;
+               border:3px solid ${scoreColor};object-fit:cover;">`
+          : `<div style="width:80px;height:80px;border-radius:50%;background:#2a2a4a;
+               border:3px solid ${scoreColor};display:flex;align-items:center;
+               justify-content:center;font-size:32px;">👤</div>`
+        }
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+          <span style="font-size:20px;font-weight:bold;color:#e0e0e0;">${r.full_name}</span>
+          ${r.verified  ? '<span style="color:#7eb8f7;" title="Верифицирован">✔️</span>' : ''}
+          ${r.is_closed ? '<span style="color:#888;font-size:13px;">🔒 Закрытый</span>' : ''}
+        </div>
+        <a href="${r.vk_url}" target="_blank"
+          style="color:#7eb8f7;font-size:13px;text-decoration:none;">${r.vk_url}</a>
+        <div style="margin-top:8px;font-size:12px;color:#666;">ID: ${r.user_id}</div>
+      </div>
+      <div style="text-align:center;background:${scoreBg};border:1px solid ${scoreColor};
+                  border-radius:16px;padding:16px 24px;flex-shrink:0;">
+        <div style="font-size:40px;font-weight:bold;color:${scoreColor};">${r.score}</div>
+        <div style="font-size:11px;color:#888;margin-bottom:8px;">из 100</div>
+        <div style="font-size:13px;font-weight:bold;color:${scoreColor};">${r.label}</div>
+      </div>
+    </div>
+    <div style="margin-top:20px;">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#555;margin-bottom:6px;">
+        <span>✅ Легитимный</span><span>⚠️ Подозрительный</span><span>🚨 Фейк</span>
+      </div>
+      <div style="background:#111;border-radius:8px;height:12px;overflow:hidden;">
+        <div style="width:${r.score}%;height:100%;border-radius:8px;transition:width .6s;
+                    background:linear-gradient(90deg,#44bb44,#ff9900,#ff4444);"></div>
+      </div>
+    </div>`;
+
+  const s  = r.stats || {};
+  const pd = r.photos_detail || {};
+  const statsItems = [
+    ['👥 Друзей',        s.friends],
+    ['👁 Подписчиков',   s.followers],
+    ['📌 Подписок',      s.following],
+    ['👥 Групп',         s.groups],
+    ['🖼 Фото профиля',  pd.profile ?? s.photos ?? 0],
+    ['🖼 Фото на стене', pd.wall    ?? '—'],
+    ['🖼 Общие фото',    pd.tagged  === 0 ? '🔒 закрыто API' : (pd.tagged ?? '—')],
+    ['🖼 Всего фото',    pd.total   ?? s.photos ?? 0],
+    ['📰 Постов',        s.posts],
+  ];
+  document.getElementById('stats-grid').innerHTML = statsItems.map(([label, val]) => `
+    <div style="display:flex;justify-content:space-between;
+                padding:7px 0;border-bottom:1px solid #1a1a3a;font-size:13px;">
+      <span style="color:#888;">${label}</span>
+      <span style="color:#e0e0e0;font-weight:bold;">${val ?? '—'}</span>
+    </div>`).join('');
+
+  const reasonsEl = document.getElementById('reasons-list');
+  reasonsEl.innerHTML = r.reasons && r.reasons.length
+    ? r.reasons.map(x => `<div style="padding:6px 0;font-size:13px;color:#ff8888;
+        border-bottom:1px solid #2a1a1a;">${x}</div>`).join('')
+    : '<div style="color:#555;font-size:13px;">Подозрительных признаков не найдено</div>';
+
+  const goodsEl = document.getElementById('goods-list');
+  goodsEl.innerHTML = r.goods && r.goods.length
+    ? r.goods.map(x => `<div style="padding:6px 0;font-size:13px;color:#88ff88;
+        border-bottom:1px solid #0a2a0a;">${x}</div>`).join('')
+    : '<div style="color:#555;font-size:13px;">—</div>';
+
+  document.getElementById('result-block').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+async function loadHistory() {
+  try {
+    const res  = await fetch('/api/vk/history');
+    const data = await res.json();
+    renderHistory(data.history || []);
+  } catch(e) {
+    console.error('Ошибка загрузки истории:', e);
+  }
+}
+
+function renderHistory(items) {
+  const box = document.getElementById('history-cards');
+
+  if (!items.length) {
+    box.innerHTML = `<div style="color:#555;font-size:13px;text-align:center;
+      padding:20px;grid-column:1/-1;">
+      История пуста — проанализируй первый профиль</div>`;
+    return;
+  }
+
+  items.forEach(item => { historyCache[item.id] = item; });
+
+  box.innerHTML = items.map(item => {
+    const s       = item.stats   || {};
+    const reasons = item.reasons || [];
+    const goods   = item.goods   || [];
+    const scoreBg = item.status === 'fake'
+      ? '#2a1010' : item.status === 'suspicious'
+      ? '#2a1a00' : '#0f2a0f';
+    const time    = (item.checked_at || '').slice(0, 16).replace('T', ' ');
+
+    return `
+    <div style="background:#0f0f1a;border:1px solid ${item.color};
+                border-radius:14px;padding:16px;position:relative;">
+
+      <!-- Удалить -->
+      <button onclick="deleteCheck(${item.id})"
+        style="position:absolute;top:10px;right:10px;background:transparent;
+               border:none;color:#555;cursor:pointer;font-size:16px;"
+        title="Удалить"
+        onmouseover="this.style.color='#ff4444'"
+        onmouseout="this.style.color='#555'">✕</button>
+
+      <!-- Шапка -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        ${item.photo && item.photo.includes('userapi.com')
+          ? `<img src="${item.photo}" style="width:48px;height:48px;border-radius:50%;
+               border:2px solid ${item.color};object-fit:cover;flex-shrink:0;">`
+          : `<div style="width:48px;height:48px;border-radius:50%;background:#2a2a4a;
+               border:2px solid ${item.color};display:flex;align-items:center;
+               justify-content:center;font-size:20px;flex-shrink:0;">👤</div>`
+        }
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:bold;color:#e0e0e0;font-size:14px;
+                      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            ${item.full_name || 'Неизвестно'}
+          </div>
+          <a href="${item.vk_url || '#'}" target="_blank"
+            style="font-size:11px;color:#7eb8f7;text-decoration:none;">
+            ${item.vk_url || ''}
+          </a>
+          <div style="font-size:11px;color:#555;margin-top:2px;">${time}</div>
+        </div>
+      </div>
+
+      <!-- Балл -->
+      <div style="display:flex;align-items:center;gap:10px;background:${scoreBg};
+                  border-radius:10px;padding:10px;margin-bottom:12px;">
+        <div style="font-size:28px;font-weight:bold;color:${item.color};
+                    min-width:42px;text-align:center;">${item.score}</div>
+        <div>
+          <div style="font-size:12px;font-weight:bold;color:${item.color};">${item.label}</div>
+          <div style="font-size:11px;color:#666;margin-top:2px;">из 100 баллов</div>
+        </div>
+      </div>
+
+      <!-- Мини-статистика -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:12px;">
+        ${[
+          ['👥 Друзей',      s.friends],
+          ['👁 Подписчиков', s.followers],
+          ['📰 Постов',      s.posts],
+          ['👥 Групп',       s.groups],
+        ].map(([label, val]) => `
+          <div style="background:#0a0a14;border-radius:6px;padding:5px 8px;font-size:11px;">
+            <span style="color:#666;">${label}:</span>
+            <span style="color:#e0e0e0;float:right;font-weight:bold;">${val ?? '—'}</span>
+          </div>`).join('')}
+      </div>
+
+      <!-- Признаки -->
+      ${reasons.length ? `
+        <div style="margin-bottom:8px;">
+          <div style="font-size:11px;color:#ff8888;margin-bottom:4px;">⚠️ Подозрительно:</div>
+          ${reasons.slice(0, 2).map(r => `
+            <div style="font-size:11px;color:#cc8888;padding:2px 0;
+                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r}</div>
+          `).join('')}
+          ${reasons.length > 2
+            ? `<div style="font-size:11px;color:#555;">и ещё ${reasons.length - 2}...</div>` : ''}
+        </div>` : ''}
+
+      ${goods.length ? `
+        <div style="margin-bottom:12px;">
+          <div style="font-size:11px;color:#88ff88;margin-bottom:4px;">✅ Признаки нормы:</div>
+          ${goods.slice(0, 2).map(g => `
+            <div style="font-size:11px;color:#88cc88;padding:2px 0;
+                        white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${g}</div>
+          `).join('')}
+          ${goods.length > 2
+            ? `<div style="font-size:11px;color:#555;">и ещё ${goods.length - 2}...</div>` : ''}
+        </div>` : ''}
+
+      <!-- Подробнее -->
+      <button onclick="showFromHistory(${item.id})"
+        style="width:100%;background:#1a2a4a;border:1px solid #3a6fd8;
+               color:#7eb8f7;padding:7px;border-radius:8px;
+               cursor:pointer;font-size:12px;">
+        🔍 Подробнее
+      </button>
+    </div>`;
+  }).join('');
+}
+
+function showFromHistory(id) {
+  const item = historyCache[id];
+  if (!item) return;
+  showResult({
+    user_id:       item.vk_user_id,
+    full_name:     item.full_name,
+    screen_name:   item.screen_name,
+    photo:         item.photo,
+    vk_url:        item.vk_url,
+    score:         item.score,
+    status:        item.status,
+    label:         item.label,
+    color:         item.color,
+    stats:         item.stats   || {},
+    reasons:       item.reasons || [],
+    goods:         item.goods   || [],
+    verified:      (item.stats  || {}).verified,
+    is_closed:     (item.stats  || {}).is_closed,
+    photos_detail: item.photos_detail || {},
+  });
+}
+
+async function deleteCheck(checkId) {
+  if (!confirm('Удалить эту проверку из истории?')) return;
+  await fetch(`/api/vk/history/delete/${checkId}`, {method: 'DELETE'});
+  await loadHistory();
+}
+
+loadHistory();
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.activeElement.id === 'vk-url') {
+    analyzeVK();
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,321 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div style="background:var(--pine);padding:24px 40px;display:flex;gap:20px;flex-wrap:wrap;align-items:center;">
+  <div style="display:flex;gap:16px;flex-wrap:wrap;">
+    <div style="text-align:center;">
+      <div id="st-users" style="font-size:28px;font-weight:700;color:var(--beige);font-family:'Playfair Display',serif;">{{ users|length }}</div>
+      <div style="font-size:11px;color:rgba(255,247,230,0.55);text-transform:uppercase;letter-spacing:1px;">Пользователей</div>
+    </div>
+    <div style="width:1px;background:rgba(255,247,230,0.1);"></div>
+    <div style="text-align:center;">
+      <div id="st-posts" style="font-size:28px;font-weight:700;color:var(--accent);font-family:'Playfair Display',serif;">{{ posts|length }}</div>
+      <div style="font-size:11px;color:rgba(255,247,230,0.55);text-transform:uppercase;letter-spacing:1px;">Постов</div>
+    </div>
+    <div style="width:1px;background:rgba(255,247,230,0.1);"></div>
+    <div style="text-align:center;">
+      <div id="st-likes" style="font-size:28px;font-weight:700;color:var(--beige);font-family:'Playfair Display',serif;">{{ posts|sum(attribute='likes') }}</div>
+      <div style="font-size:11px;color:rgba(255,247,230,0.55);text-transform:uppercase;letter-spacing:1px;">Лайков</div>
+    </div>
+    <div style="width:1px;background:rgba(255,247,230,0.1);"></div>
+    <div style="text-align:center;">
+      <div id="st-comments" style="font-size:28px;font-weight:700;color:var(--accent);font-family:'Playfair Display',serif;">{{ posts|sum(attribute='comments_count') }}</div>
+      <div style="font-size:11px;color:rgba(255,247,230,0.55);text-transform:uppercase;letter-spacing:1px;">Комментариев</div>
+    </div>
+  </div>
+  <button onclick="refreshAll()" id="refresh-btn"
+    style="margin-left:auto;background:rgba(255,247,230,0.1);border:1px solid rgba(255,247,230,0.2);
+           color:var(--beige);padding:9px 20px;border-radius:8px;cursor:pointer;
+           font-size:13px;font-family:'DM Sans',sans-serif;font-weight:500;transition:all .2s;"
+    onmouseover="this.style.background='rgba(255,247,230,0.18)'"
+    onmouseout="this.style.background='rgba(255,247,230,0.1)'">
+    🔄 Обновить
+  </button>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 300px;gap:0;max-width:1200px;margin:0 auto;padding:28px 24px;gap:24px;">
+
+  <div>
+    {% if current_user_id %}
+    <div style="background:white;border:1px solid var(--beige-mid);border-radius:14px;padding:20px;margin-bottom:20px;">
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:10px;font-weight:500;">Что у вас нового?</div>
+      <textarea id="new-post-text" rows="3"
+        placeholder="Напишите что-нибудь..."
+        style="resize:none;margin-bottom:12px;border-color:var(--beige-mid);"></textarea>
+      <button onclick="submitPost()" class="btn btn-primary" style="border-radius:8px;">
+        Опубликовать
+      </button>
+    </div>
+    {% endif %}
+
+    <div id="feed">
+      {% for post in posts %}
+      <div class="post-card" id="post-{{ post.id }}"
+        style="background:white;border:1px solid var(--beige-mid);border-radius:14px;
+               padding:20px;margin-bottom:14px;transition:box-shadow .2s;"
+        onmouseover="this.style.boxShadow='0 4px 20px rgba(0,49,31,0.08)'"
+        onmouseout="this.style.boxShadow='none'">
+
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+          <div style="width:38px;height:38px;border-radius:50%;background:var(--pine);
+                      display:flex;align-items:center;justify-content:center;
+                      font-weight:700;font-size:14px;color:var(--beige);flex-shrink:0;">
+            {{ post.username[0].upper() }}
+          </div>
+          <div>
+            <div style="font-weight:600;color:var(--pine);font-size:14px;">{{ post.username }}</div>
+            <div style="font-size:11px;color:var(--text-muted);">{{ post.created_at }}</div>
+          </div>
+        </div>
+
+        <p style="margin-bottom:14px;line-height:1.7;color:var(--text-dark);">{{ post.content }}</p>
+
+        <div style="display:flex;align-items:center;gap:16px;padding-top:12px;border-top:1px solid var(--beige-mid);">
+          {% if current_user_id %}
+          <button onclick="likePost({{ post.id }}, this)"
+            style="background:none;border:none;cursor:pointer;color:var(--danger);
+                   font-size:14px;padding:0;display:flex;align-items:center;gap:5px;
+                   font-family:'DM Sans',sans-serif;font-weight:500;transition:opacity .2s;"
+            onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'">
+            ❤️ <span id="likes-{{ post.id }}">{{ post.likes }}</span>
+          </button>
+          {% else %}
+          <span style="color:var(--danger);font-size:14px;">❤️ {{ post.likes }}</span>
+          {% endif %}
+          <span style="color:var(--text-muted);font-size:13px;">
+            💬 <span id="ccount-{{ post.id }}">{{ post.comments_count }}</span>
+          </span>
+        </div>
+
+        <div id="comments-{{ post.id }}" style="margin-top:12px;">
+          {% for c in post.comments %}
+          <div style="padding:8px 12px;background:var(--beige-dark);border-radius:8px;
+                      margin-bottom:6px;font-size:13px;">
+            <span style="color:var(--pine);font-weight:600;">{{ c.username }}</span>
+            <span style="color:var(--text-muted);font-size:11px;margin:0 6px;">{{ c.created_at[11:16] }}</span>
+            <span style="color:var(--text-dark);">{{ c.content }}</span>
+          </div>
+          {% endfor %}
+        </div>
+
+        {% if current_user_id %}
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <input id="ci-{{ post.id }}" placeholder="Написать комментарий..."
+                 style="flex:1;padding:8px 12px;font-size:13px;"
+                 onkeydown="if(event.key==='Enter') submitComment({{ post.id }})">
+          <button onclick="submitComment({{ post.id }})"
+            style="background:var(--pine);border:none;color:var(--beige);padding:8px 16px;
+                   border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;
+                   font-family:'DM Sans',sans-serif;">→</button>
+        </div>
+        {% endif %}
+      </div>
+      {% else %}
+      <div style="text-align:center;color:var(--text-muted);padding:60px 20px;">
+        <div style="font-size:40px;margin-bottom:12px;">📝</div>
+        <div style="font-size:16px;font-weight:500;">Постов пока нет</div>
+        <div style="font-size:13px;margin-top:6px;">Будь первым!</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div>
+    <!-- Симулятор ботов -->
+    <div style="background:var(--pine);border-radius:14px;padding:20px;margin-bottom:16px;">
+      <div style="font-size:14px;font-weight:700;color:var(--beige);margin-bottom:6px;
+                  font-family:'Playfair Display',serif;">🤖 Симулятор ботов</div>
+      <div style="font-size:12px;color:rgba(255,247,230,0.6);margin-bottom:16px;line-height:1.5;">
+        Запусти ботов и наблюдай как алгоритм их обнаруживает в разделе «Граф»
+      </div>
+      <div id="bot-status-dot"
+        style="text-align:center;font-size:12px;margin-bottom:10px;
+               display:{{ 'flex' if bot_running else 'none' }};
+               align-items:center;justify-content:center;gap:6px;color:var(--accent);">
+        <span style="width:7px;height:7px;border-radius:50%;background:var(--accent);
+                     box-shadow:0 0 8px var(--accent);display:inline-block;"></span>
+        Боты активны
+      </div>
+      <button id="bot-btn" onclick="toggleBots()"
+        style="width:100%;padding:11px;border:none;border-radius:8px;
+               cursor:pointer;font-size:14px;font-weight:600;
+               font-family:'DM Sans',sans-serif;transition:all .2s;
+               background:{{ 'var(--danger)' if bot_running else 'var(--accent)' }};
+               color:{{ 'white' if bot_running else 'var(--pine)' }};">
+        {{ '⏹ Остановить ботов' if bot_running else '▶ Запустить ботов' }}
+      </button>
+    </div>
+
+    <div style="background:white;border:1px solid var(--beige-mid);border-radius:14px;padding:20px;">
+      <div style="font-size:14px;font-weight:700;color:var(--pine);margin-bottom:14px;
+                  font-family:'Playfair Display',serif;">👥 Участники</div>
+      {% for user in users %}
+        {% if user.id != current_user_id %}
+        <div style="display:flex;align-items:center;justify-content:space-between;
+                    margin-bottom:12px;padding-bottom:12px;
+                    border-bottom:1px solid var(--beige-dark);">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="width:32px;height:32px;border-radius:50%;
+                        background:{% if user.is_bot %}rgba(139,32,32,0.1){% else %}rgba(0,49,31,0.1){% endif %};
+                        border:1.5px solid {% if user.is_bot %}var(--danger){% else %}var(--pine-light){% endif %};
+                        display:flex;align-items:center;justify-content:center;
+                        font-size:12px;font-weight:700;
+                        color:{% if user.is_bot %}var(--danger){% else %}var(--pine){% endif %};">
+              {{ user.username[0].upper() }}
+            </div>
+            <span style="font-size:13px;font-weight:500;
+                         color:{% if user.is_bot %}var(--danger){% else %}var(--text-dark){% endif %};">
+              {{ user.username }}{% if user.is_bot %} 🤖{% endif %}
+            </span>
+          </div>
+          {% if current_user_id %}
+          <button onclick="toggleFollow({{ user.id }}, this)"
+            style="font-size:11px;padding:4px 12px;border-radius:6px;cursor:pointer;
+                   font-family:'DM Sans',sans-serif;font-weight:600;transition:all .2s;
+                   {% if user.id in following_ids %}
+                   background:transparent;color:var(--text-muted);border:1px solid var(--beige-mid);
+                   {% else %}
+                   background:var(--pine);color:var(--beige);border:1px solid var(--pine);
+                   {% endif %}">
+            {{ 'Отписаться' if user.id in following_ids else '+ Подписаться' }}
+          </button>
+          {% endif %}
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<script>
+let botRunning = {{ 'true' if bot_running else 'false' }};
+
+async function submitPost() {
+  const ta   = document.getElementById('new-post-text');
+  const text = ta.value.trim();
+  if (!text) return;
+  ta.disabled = true;
+  await fetch('/api/post', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({content: text})
+  });
+  ta.value = ''; ta.disabled = false;
+  await refreshFeed();
+}
+
+async function likePost(postId, btn) {
+  btn.disabled = true;
+  const res  = await fetch('/api/like/' + postId, {method:'POST'});
+  const data = await res.json();
+  document.getElementById('likes-' + postId).textContent = data.likes;
+  btn.disabled = false;
+}
+
+async function submitComment(postId) {
+  const inp  = document.getElementById('ci-' + postId);
+  const text = inp.value.trim();
+  if (!text) return;
+  inp.disabled = true;
+  const res  = await fetch('/api/comment/' + postId, {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({content: text})
+  });
+  const data = await res.json();
+  inp.value = ''; inp.disabled = false;
+  const box = document.getElementById('comments-' + postId);
+  const div = document.createElement('div');
+  div.style.cssText = 'padding:8px 12px;background:var(--beige-dark);border-radius:8px;margin-bottom:6px;font-size:13px;';
+  div.innerHTML = `<span style="color:var(--pine);font-weight:600;">${data.username}</span>
+    <span style="color:var(--text-muted);font-size:11px;margin:0 6px;">${data.time}</span>
+    <span>${data.content}</span>`;
+  box.appendChild(div);
+  const cc = document.getElementById('ccount-' + postId);
+  cc.textContent = parseInt(cc.textContent) + 1;
+}
+
+async function toggleFollow(userId, btn) {
+  btn.disabled = true;
+  const res  = await fetch('/api/follow/' + userId, {method:'POST'});
+  const data = await res.json();
+  if (data.following) {
+    btn.textContent = 'Отписаться';
+    btn.style.cssText = 'font-size:11px;padding:4px 12px;border-radius:6px;cursor:pointer;font-family:"DM Sans",sans-serif;font-weight:600;background:transparent;color:var(--text-muted);border:1px solid var(--beige-mid);';
+  } else {
+    btn.textContent = '+ Подписаться';
+    btn.style.cssText = 'font-size:11px;padding:4px 12px;border-radius:6px;cursor:pointer;font-family:"DM Sans",sans-serif;font-weight:600;background:var(--pine);color:var(--beige);border:1px solid var(--pine);';
+  }
+  btn.disabled = false;
+}
+
+async function refreshFeed() {
+  const res  = await fetch('/api/feed');
+  const data = await res.json();
+  const feed = document.getElementById('feed');
+  data.posts.forEach(post => {
+    if (!document.getElementById('post-' + post.id)) {
+      const div = document.createElement('div');
+      div.id = 'post-' + post.id;
+      div.style.cssText = 'background:white;border:1px solid var(--beige-mid);border-radius:14px;padding:20px;margin-bottom:14px;';
+      div.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+          <div style="width:38px;height:38px;border-radius:50%;background:var(--pine);
+                      display:flex;align-items:center;justify-content:center;
+                      font-weight:700;font-size:14px;color:var(--beige);">
+            ${post.username[0].toUpperCase()}
+          </div>
+          <div>
+            <div style="font-weight:600;color:var(--pine);font-size:14px;">${post.username}</div>
+            <div style="font-size:11px;color:var(--text-muted);">${post.created_at}</div>
+          </div>
+        </div>
+        <p style="margin-bottom:14px;line-height:1.7;color:var(--text-dark);">${post.content}</p>
+        <div style="display:flex;align-items:center;gap:16px;padding-top:12px;border-top:1px solid var(--beige-mid);">
+          <button onclick="likePost(${post.id}, this)"
+            style="background:none;border:none;cursor:pointer;color:var(--danger);
+                   font-size:14px;padding:0;font-family:'DM Sans',sans-serif;font-weight:500;">
+            ❤️ <span id="likes-${post.id}">${post.likes}</span>
+          </button>
+          <span style="color:var(--text-muted);font-size:13px;">💬 <span id="ccount-${post.id}">${post.comments_count}</span></span>
+        </div>
+        <div id="comments-${post.id}" style="margin-top:12px;"></div>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <input id="ci-${post.id}" placeholder="Написать комментарий..." style="flex:1;padding:8px 12px;font-size:13px;"
+                 onkeydown="if(event.key==='Enter') submitComment(${post.id})">
+          <button onclick="submitComment(${post.id})"
+            style="background:var(--pine);border:none;color:var(--beige);padding:8px 16px;
+                   border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;
+                   font-family:'DM Sans',sans-serif;">→</button>
+        </div>`;
+      feed.prepend(div);
+    }
+  });
+  document.getElementById('st-posts').textContent = data.posts.length;
+  const totalLikes    = data.posts.reduce((s,p) => s + p.likes, 0);
+  const totalComments = data.posts.reduce((s,p) => s + p.comments_count, 0);
+  document.getElementById('st-likes').textContent    = totalLikes;
+  document.getElementById('st-comments').textContent = totalComments;
+}
+
+async function refreshAll() {
+  const btn = document.getElementById('refresh-btn');
+  btn.textContent = '⏳ ...'; btn.disabled = true;
+  await refreshFeed();
+  btn.textContent = '🔄 Обновить'; btn.disabled = false;
+}
+
+async function toggleBots() {
+  const url = botRunning ? '/api/bots/stop' : '/api/bots/start';
+  const btn = document.getElementById('bot-btn');
+  const dot = document.getElementById('bot-status-dot');
+  btn.disabled = true; btn.textContent = '⏳ ...';
+  const res  = await fetch(url);
+  const data = await res.json();
+  botRunning  = data.running;
+  btn.textContent = botRunning ? '⏹ Остановить ботов' : '▶ Запустить ботов';
+  btn.style.background = botRunning ? 'var(--danger)' : 'var(--accent)';
+  btn.style.color      = botRunning ? 'white' : 'var(--pine)';
+  dot.style.display    = botRunning ? 'flex' : 'none';
+  btn.disabled = false;
+}
+</script>
+{% endblock %}

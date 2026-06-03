@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FakeNet Detector</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+<style>
+  :root {
+    --beige:       #FFF7E6;
+    --beige-dark:  #F0E8D5;
+    --beige-mid:   #E8DCC8;
+    --pine:        #00311F;
+    --pine-mid:    #00482D;
+    --pine-light:  #005C39;
+    --pine-pale:   #0A6B45;
+    --accent:      #C8A96E;
+    --accent-light:#E2C98C;
+    --text-dark:   #1A2E24;
+    --text-mid:    #3D5248;
+    --text-muted:  #7A9486;
+    --danger:      #8B2020;
+    --danger-light:#B83232;
+    --success:     #1A6B3C;
+    --warn:        #8B5E1A;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--beige);
+    color: var(--text-dark);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  nav {
+    background: var(--pine);
+    padding: 0 40px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    box-shadow: 0 2px 20px rgba(0,49,31,0.3);
+  }
+
+  nav .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--beige);
+    letter-spacing: 0.02em;
+    margin-right: 8px;
+  }
+
+  nav .logo span {
+    color: var(--accent);
+  }
+
+  nav .nav-divider {
+    width: 1px;
+    height: 20px;
+    background: var(--pine-light);
+    margin: 0 8px;
+  }
+
+  nav a {
+    color: rgba(255,247,230,0.65);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    padding: 6px 14px;
+    border-radius: 6px;
+    transition: all .2s;
+    letter-spacing: 0.01em;
+  }
+
+  nav a:hover {
+    background: var(--pine-light);
+    color: var(--beige);
+  }
+
+  nav a.admin-link {
+    color: var(--accent-light);
+    border: 1px solid rgba(200,169,110,0.3);
+  }
+
+  nav a.admin-link:hover {
+    background: rgba(200,169,110,0.15);
+    border-color: var(--accent);
+  }
+
+  .profile-wrap {
+    margin-left: auto;
+    position: relative;
+  }
+
+  .profile-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--pine-light);
+    border: 1px solid rgba(255,247,230,0.15);
+    border-radius: 30px;
+    padding: 6px 14px 6px 8px;
+    cursor: pointer;
+    transition: all .2s;
+    user-select: none;
+  }
+
+  .profile-btn:hover {
+    background: var(--pine-pale);
+    border-color: rgba(255,247,230,0.3);
+  }
+
+  .profile-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 12px;
+    color: var(--pine);
+  }
+
+  .profile-avatar.bot-avatar {
+    background: var(--danger);
+    color: var(--beige);
+  }
+
+  .profile-name {
+    font-size: 14px;
+    color: var(--beige);
+    font-weight: 500;
+  }
+
+  .profile-arrow {
+    font-size: 9px;
+    color: rgba(255,247,230,0.5);
+    transition: transform .2s;
+  }
+
+  .profile-wrap.open .profile-arrow { transform: rotate(180deg); }
+
+  .bot-badge {
+    background: rgba(139,32,32,0.3);
+    border: 1px solid var(--danger);
+    border-radius: 10px;
+    padding: 2px 8px;
+    font-size: 11px;
+    color: #ff9999;
+  }
+
+  .profile-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    background: var(--beige);
+    border: 1px solid var(--beige-mid);
+    border-radius: 14px;
+    min-width: 270px;
+    box-shadow: 0 12px 40px rgba(0,49,31,0.2);
+    overflow: hidden;
+    z-index: 300;
+  }
+
+  .profile-wrap.open .profile-dropdown { display: block; }
+
+  .dd-header {
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--beige-mid);
+    background: var(--beige-dark);
+  }
+
+  .dd-username {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--pine);
+    font-family: 'Playfair Display', serif;
+  }
+
+  .dd-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 3px;
+  }
+
+  .dd-section-title {
+    padding: 10px 16px 6px;
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    font-weight: 600;
+  }
+
+  .dd-bot-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 16px;
+    transition: background .15s;
+  }
+
+  .dd-bot-item:hover { background: var(--beige-dark); }
+
+  .dd-bot-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .dd-bot-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: rgba(139,32,32,0.12);
+    border: 1px solid rgba(139,32,32,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--danger);
+  }
+
+  .dd-bot-name { font-size: 13px; color: var(--text-dark); font-weight: 500; }
+  .dd-bot-tag  { font-size: 11px; color: var(--text-muted); }
+
+  .dd-bot-login {
+    font-size: 12px;
+    color: var(--pine);
+    background: transparent;
+    border: 1px solid var(--pine-light);
+    border-radius: 10px;
+    padding: 3px 10px;
+    text-decoration: none;
+    transition: all .2s;
+    font-weight: 500;
+  }
+
+  .dd-bot-login:hover {
+    background: var(--pine);
+    color: var(--beige);
+  }
+
+  .dd-divider {
+    border: none;
+    border-top: 1px solid var(--beige-mid);
+    margin: 4px 0;
+  }
+
+  .dd-action {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    font-size: 13px;
+    color: var(--text-mid);
+    text-decoration: none;
+    transition: background .15s;
+    font-weight: 500;
+  }
+
+  .dd-action:hover { background: var(--beige-dark); color: var(--pine); }
+  .dd-action.admin { color: var(--warn); }
+  .dd-action.admin:hover { background: rgba(139,94,26,0.08); }
+  .dd-action.return-btn { color: var(--pine-pale); }
+  .dd-action.return-btn:hover { background: rgba(0,92,57,0.08); }
+  .dd-action.danger { color: var(--danger); }
+  .dd-action.danger:hover { background: rgba(139,32,32,0.06); }
+
+  .dd-empty {
+    padding: 10px 16px 14px;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  .btn {
+    display: inline-block;
+    padding: 9px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    text-decoration: none;
+    transition: all .2s;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+
+  .btn-primary {
+    background: var(--pine);
+    color: var(--beige);
+  }
+  .btn-primary:hover { background: var(--pine-pale); }
+
+  .btn-danger {
+    background: var(--danger);
+    color: var(--beige);
+  }
+  .btn-danger:hover { background: var(--danger-light); }
+
+  .btn-success {
+    background: var(--success);
+    color: var(--beige);
+  }
+  .btn-success:hover { background: var(--pine-pale); }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--pine);
+    border: 1.5px solid var(--pine);
+  }
+  .btn-outline:hover { background: var(--pine); color: var(--beige); }
+
+  .btn-accent {
+    background: var(--accent);
+    color: var(--pine);
+    font-weight: 700;
+  }
+  .btn-accent:hover { background: var(--accent-light); }
+
+  .card {
+    background: white;
+    border: 1px solid var(--beige-mid);
+    border-radius: 14px;
+    padding: 20px;
+  }
+
+  input, textarea, select {
+    background: white;
+    border: 1.5px solid var(--beige-mid);
+    color: var(--text-dark);
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+    width: 100%;
+    outline: none;
+    transition: border .2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--pine);
+    box-shadow: 0 0 0 3px rgba(0,49,31,0.08);
+  }
+
+  input::placeholder, textarea::placeholder {
+    color: var(--text-muted);
+  }
+
+  .label-bot   { background:rgba(139,32,32,0.1); color:var(--danger);  padding:3px 10px; border-radius:20px; font-size:12px; font-weight:600; }
+  .label-human { background:rgba(0,49,31,0.1);  color:var(--pine);    padding:3px 10px; border-radius:20px; font-size:12px; font-weight:600; }
+  .label-admin { background:rgba(139,94,26,0.1);color:var(--warn);    padding:3px 10px; border-radius:20px; font-size:12px; font-weight:600; }
+
+  .container { max-width: 1100px; margin: 0 auto; padding: 28px 20px; }
+
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    color: var(--pine);
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .section-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--beige-dark); }
+  ::-webkit-scrollbar-thumb { background: var(--pine-light); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="logo">🔍 Fake<span>Net</span></span>
+  <div class="nav-divider"></div>
+
+  {% if current_username %}
+    <a href="/">🏠 Лента</a>
+    <a href="/graph">📊 Граф</a>
+    <a href="/vk">🔎 VK</a>
+    {% if is_admin_user %}
+      <a href="/admin" class="admin-link">⚙️ Админ</a>
+    {% endif %}
+
+    <div class="profile-wrap" id="profileWrap">
+      <div class="profile-btn" onclick="toggleProfile()">
+        <div class="profile-avatar {% if session.get('is_bot_session') %}bot-avatar{% endif %}">
+          {{ current_username[0].upper() }}
+        </div>
+        <span class="profile-name">{{ current_username }}</span>
+        {% if session.get('is_bot_session') %}
+          <span class="bot-badge">🤖 бот</span>
+        {% endif %}
+        <span class="profile-arrow">▼</span>
+      </div>
+
+      <div class="profile-dropdown">
+        <div class="dd-header">
+          <div class="dd-username">{{ current_username }}</div>
+          {% if session.get('is_bot_session') %}
+            <div class="dd-sub" style="color:var(--danger);">🤖 Режим бота</div>
+          {% elif is_admin_user %}
+            <div class="dd-sub" style="color:var(--warn);">👑 Администратор</div>
+          {% else %}
+            <div class="dd-sub">Основной аккаунт</div>
+          {% endif %}
+        </div>
+
+        {% if session.get('is_bot_session') %}
+          <a href="/login-back" class="dd-action return-btn">← Вернуться к своему аккаунту</a>
+          <hr class="dd-divider">
+        {% else %}
+          <div class="dd-section-title">🤖 Мои боты</div>
+          <div id="bot-list-dd">
+            <div class="dd-empty">Загрузка...</div>
+          </div>
+          <hr class="dd-divider">
+          {% if is_admin_user %}
+            <a href="/admin" class="dd-action admin">⚙️ Панель администратора</a>
+            <hr class="dd-divider">
+          {% endif %}
+        {% endif %}
+
+        <a href="/logout" class="dd-action danger">🚪 Выйти</a>
+      </div>
+    </div>
+
+  {% else %}
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+      <a href="/login">Войти</a>
+      <a href="/register" class="btn btn-accent" style="padding:7px 18px;border-radius:8px;">Регистрация</a>
+    </div>
+  {% endif %}
+</nav>
+
+{% block content %}{% endblock %}
+
+<script>
+const profileWrap = document.getElementById('profileWrap');
+let botsLoaded = false;
+
+function toggleProfile() {
+  if (!profileWrap) return;
+  profileWrap.classList.toggle('open');
+  if (profileWrap.classList.contains('open') && !botsLoaded) {
+    loadBots();
+  }
+}
+
+document.addEventListener('click', e => {
+  if (profileWrap && !profileWrap.contains(e.target)) {
+    profileWrap.classList.remove('open');
+  }
+});
+
+async function loadBots() {
+  const box = document.getElementById('bot-list-dd');
+  if (!box) return;
+  try {
+    const res  = await fetch('/api/bots/list');
+    const data = await res.json();
+
+    if (!data.bots || data.bots.length === 0) {
+      box.innerHTML = `<div class="dd-empty">Ботов нет.<br>
+        <span style="color:var(--text-muted);font-size:11px;">
+          Выбери ботов при регистрации
+        </span></div>`;
+      botsLoaded = true;
+      return;
+    }
+
+    const visible = data.bots.slice(0, 5);
+    box.innerHTML = visible.map(bot => `
+      <div class="dd-bot-item">
+        <div class="dd-bot-left">
+          <div class="dd-bot-avatar">${bot.username[0].toUpperCase()}</div>
+          <div>
+            <div class="dd-bot-name">${bot.username}</div>
+            <div class="dd-bot-tag">ID: ${bot.id}</div>
+          </div>
+        </div>
+        <a href="/login-as-bot/${bot.id}" class="dd-bot-login">Войти →</a>
+      </div>
+    `).join('');
+
+    if (data.bots.length > 5) {
+      box.innerHTML += `<div class="dd-empty" style="padding:4px 16px 10px;">
+        и ещё ${data.bots.length - 5}...
+      </div>`;
+    }
+    botsLoaded = true;
+  } catch(e) {
+    if (box) box.innerHTML = '<div class="dd-empty" style="color:var(--danger);">Ошибка загрузки</div>';
+  }
+}
+</script>
+</body>
+</html>

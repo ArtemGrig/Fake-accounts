@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block content %}
+<div style="min-height:calc(100vh - 60px);display:flex;align-items:center;justify-content:center;
+            background:var(--beige);padding:20px;">
+  <div style="width:100%;max-width:400px;">
+
+    <div style="text-align:center;margin-bottom:32px;">
+      <div style="font-size:40px;margin-bottom:12px;">🔍</div>
+      <h1 style="font-family:'Playfair Display',serif;font-size:28px;color:var(--pine);font-weight:700;">
+        FakeNet Detector
+      </h1>
+      <p style="color:var(--text-muted);font-size:14px;margin-top:6px;">
+        Войдите в свой аккаунт
+      </p>
+    </div>
+
+    <div style="background:white;border:1px solid var(--beige-mid);border-radius:16px;padding:32px;
+                box-shadow:0 8px 32px rgba(0,49,31,0.08);">
+
+      {% if error %}
+      <div style="background:rgba(139,32,32,0.08);border:1px solid rgba(139,32,32,0.2);
+                  border-radius:10px;padding:12px 16px;margin-bottom:20px;
+                  color:var(--danger);font-size:14px;">
+        ⚠️ {{ error }}
+      </div>
+      {% endif %}
+
+      <form method="POST" style="display:flex;flex-direction:column;gap:16px;">
+        <div>
+          <label style="font-size:12px;color:var(--text-muted);font-weight:600;
+                        display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">
+            Имя пользователя
+          </label>
+          <input name="username" placeholder="Введите имя..." required>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--text-muted);font-weight:600;
+                        display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">
+            Пароль
+          </label>
+          <input name="password" type="password" placeholder="Введите пароль..." required>
+        </div>
+        <button type="submit" class="btn btn-primary"
+          style="width:100%;padding:13px;font-size:15px;margin-top:4px;border-radius:10px;">
+          Войти →
+        </button>
+      </form>
+
+      <div style="text-align:center;margin-top:20px;padding-top:20px;
+                  border-top:1px solid var(--beige-mid);">
+        <span style="color:var(--text-muted);font-size:14px;">Нет аккаунта? </span>
+        <a href="/register" style="color:var(--pine);font-weight:600;text-decoration:none;">
+          Зарегистрироваться
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
